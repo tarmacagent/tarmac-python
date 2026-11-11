@@ -1,6 +1,6 @@
 # tarmac-agent
 
-[![ci](https://github.com/tarmacagent/tarmac-python/actions/workflows/ci.yml/badge.svg)](https://github.com/tarmacagent/tarmac-python/actions/workflows/ci.yml) ![python](https://img.shields.io/badge/python-3.9%2B-black) ![deps](https://img.shields.io/badge/dependencies-0-black) ![license](https://img.shields.io/badge/license-MIT-black)
+[![ci](https://github.com/tarmacagent/tarmac-python/actions/workflows/ci.yml/badge.svg)](https://github.com/tarmacagent/tarmac-python/actions/workflows/ci.yml) ![python](https://img.shields.io/badge/python-3.10%2B-black) ![deps](https://img.shields.io/badge/dependencies-0-black) ![license](https://img.shields.io/badge/license-MIT-black)
 
 **Test your on-chain agent before it goes live, from Python.**
 

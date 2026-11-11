@@ -9,7 +9,7 @@ description = "Python SDK to test your on-chain agent against Tarmac: real Robin
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 authors = [{ name = "Tarmac Agent" }]
 keywords = ["ai-agent", "agents", "onchain", "robinhood-chain", "uniswap", "defi", "testing"]
 classifiers = [
