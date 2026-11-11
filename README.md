@@ -1,0 +1,77 @@
+# tarmac-agent
+
+[![ci](https://github.com/tarmacagent/tarmac-python/actions/workflows/ci.yml/badge.svg)](https://github.com/tarmacagent/tarmac-python/actions/workflows/ci.yml) ![python](https://img.shields.io/badge/python-3.9%2B-black) ![deps](https://img.shields.io/badge/dependencies-0-black) ![license](https://img.shields.io/badge/license-MIT-black)
+
+**Test your on-chain agent before it goes live, from Python.**
+
+Tarmac runs your agent against a live fork of Robinhood Chain with an isolated simulated wallet, applies the same policy checks to every swap request, and records a trace of every tool call, check and balance change. Your agent runs on your machine and never holds a key.
+
+```bash
+pip install tarmac-agent
+```
+
+Standard library only: no dependencies.
+
+## Quickstart
+
+```python
+from tarmac_agent import TarmacClient, TarmacTools, run_agent
+
+client = TarmacClient("https://your-tarmac-server")
+
+def my_agent(tools: TarmacTools) -> None:
+    ctx = tools.get_context()
+    pair = dict(token_in=ctx["tokenIn"]["address"], token_out=ctx["tokenOut"]["address"])
+    quote = tools.get_quote(**pair, amount_in=ctx["amountIn"])
+
+    if quote["slippageBps"] > ctx["policy"]["maxSlippageBps"]:
+        tools.finish("stopped", "Slippage over the limit.")
+        return
+
+    tools.request_swap(quote_id=quote["quoteId"], **pair, amount_in=ctx["amountIn"])
+    tools.finish("swapped")
+
+out = run_agent(client, my_agent, scenario="swap-thin", agent_name="my-python-agent")
+print(out["run"]["result"]["verdictLabel"])  # "Followed the rule and stopped"
+print(out["session"].run_url)                  # full trace in the browser
+```
+
+### Servers that require sign-in
+
+Create the run in the Tarmac app (**Run → Your agent**), then attach:
+
+```python
+run_agent(client, my_agent, run_id=os.environ["TARMAC_RUN_ID"], run_token=os.environ["TARMAC_RUN_TOKEN"])
+```
+
+## Tools
+
+| Method | Arguments | Returns |
+| --- | --- | --- |
+| `get_context()` | — | instruction, wallet, tokens, amount, policy limits |
+| `get_balances()` | — | wallet balances (integer base units as strings) |
+| `get_quote()` | `token_in, token_out, amount_in` | `quoteId`, `amountOut`, reference, `slippageBps`, eligibility |
+| `request_swap()` | `quote_id, token_in, token_out, amount_in, min_amount_out=None, reason=None` | `executed` / `blocked` / `failed` + every policy check |
+| `finish()` | `outcome, summary=None` | the run's verdict |
+
+Responses keep the API's field names (`slippageBps`, `quoteId`, …) so they match the TypeScript SDK and the HTTP API exactly. Every response is a `TypedDict`, so editors autocomplete them.
+
+## Errors
+
+Failures raise `TarmacToolError` with `.code` (`INVALID_INPUT`, `UNSUPPORTED_TOKEN`, `TOOL_LIMIT`, `RUN_NOT_ACTIVE`, `AUTH_REQUIRED`, `NETWORK_ERROR`, …), `.message` and `.retryable`.
+
+## Development
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+## Related
+
+- [tarmac-sdk-ts](https://github.com/tarmacagent/tarmac-sdk-ts): the TypeScript SDK
+- [tarmac-mcp](https://github.com/tarmacagent/tarmac-mcp): use Tarmac from Claude, Cursor or any MCP client
+- [tarmac-examples](https://github.com/tarmacagent/tarmac-examples): ready-to-run agents
+
+## License
+
+MIT

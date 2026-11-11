@@ -1,0 +1,29 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tarmac-agent"
+version = "0.1.0"
+description = "Python SDK to test your on-chain agent against Tarmac: real Robinhood Chain data, isolated wallets, policy checks on every swap."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.9"
+authors = [{ name = "Tarmac Agent" }]
+keywords = ["ai-agent", "agents", "onchain", "robinhood-chain", "uniswap", "defi", "testing"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Topic :: Software Development :: Testing",
+  "Typing :: Typed",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/tarmacagent/tarmac-python"
+Issues = "https://github.com/tarmacagent/tarmac-python/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tarmac_agent"]
