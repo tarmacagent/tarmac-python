@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import time
 import urllib.error
 import urllib.request
@@ -161,6 +162,18 @@ class TarmacClient:
             {"scenarioId": scenario, "token": token, "mode": mode, "agent": {"kind": "external", "name": agent_name}, "policy": policy or {}},
         )
         return RunSession(created["run"]["id"], created["runToken"], self._http.base_url + created["runUrl"], TarmacTools(self._http, created["run"]["id"], created["runToken"]), self._http)
+
+    @classmethod
+    def from_env(cls, **options: Any) -> "TarmacClient":
+        """Client for ``$TARMAC_URL`` (default ``http://localhost:3000``). Extra options go to ``__init__``."""
+        return cls(os.environ.get("TARMAC_URL") or "http://localhost:3000", **options)
+
+    def attach_from_env(self) -> RunSession:
+        """Attach using ``$TARMAC_RUN_ID`` and ``$TARMAC_RUN_TOKEN`` (from "Your agent" in the Tarmac app)."""
+        run_id, run_token = os.environ.get("TARMAC_RUN_ID"), os.environ.get("TARMAC_RUN_TOKEN")
+        if not run_id or not run_token:
+            raise TarmacToolError("AUTH_REQUIRED", "Set TARMAC_RUN_ID and TARMAC_RUN_TOKEN (create the run in the app with \"Your agent\").")
+        return self.attach(run_id, run_token)
 
     def attach(self, run_id: str, run_token: str) -> RunSession:
         """Attach to a run created elsewhere (e.g. "Your agent" in the Tarmac app)."""

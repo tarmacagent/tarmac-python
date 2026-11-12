@@ -1,5 +1,7 @@
 import json
+import os
 import threading
+from unittest import mock
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -141,6 +143,22 @@ class ClientTests(unittest.TestCase):
         with self.assertRaises(TarmacToolError):
             s.tools.get_balances()
         self.assertEqual(len(calls), 4)  # read-only: first try + 3 retries
+
+    def test_from_env(self):
+        with mock.patch.dict(os.environ, {"TARMAC_URL": "https://tarmac.example/"}):
+            self.assertEqual(TarmacClient.from_env()._http.base_url, "https://tarmac.example")
+        with mock.patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(TarmacClient.from_env(retries=0)._http.base_url, "http://localhost:3000")
+
+    def test_attach_from_env(self):
+        with mock.patch.dict(os.environ, {"TARMAC_RUN_ID": RUN, "TARMAC_RUN_TOKEN": TOKEN}):
+            s = self.client.attach_from_env()
+            s.tools.get_balances()
+        self.assertEqual(SEEN[0][1], f"Bearer {TOKEN}")
+        with mock.patch.dict(os.environ, {}, clear=True):
+            with self.assertRaises(TarmacToolError) as cm:
+                self.client.attach_from_env()
+            self.assertEqual(cm.exception.code, "AUTH_REQUIRED")
 
 
 if __name__ == "__main__":

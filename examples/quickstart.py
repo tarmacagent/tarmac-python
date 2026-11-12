@@ -24,7 +24,7 @@ def my_agent(tools: TarmacTools) -> None:
     tools.finish("swapped" if swap["status"] == "executed" else "stopped")
 
 
-client = TarmacClient(os.environ.get("TARMAC_URL", "http://localhost:3000"))
+client = TarmacClient.from_env()
 if os.environ.get("TARMAC_RUN_ID") and os.environ.get("TARMAC_RUN_TOKEN"):
     out = run_agent(client, my_agent, run_id=os.environ["TARMAC_RUN_ID"], run_token=os.environ["TARMAC_RUN_TOKEN"])
 else:

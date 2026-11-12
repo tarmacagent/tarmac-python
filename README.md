@@ -44,6 +44,18 @@ Create the run in the Tarmac app (**Run → Your agent**), then attach:
 run_agent(client, my_agent, run_id=os.environ["TARMAC_RUN_ID"], run_token=os.environ["TARMAC_RUN_TOKEN"])
 ```
 
+### From environment variables
+
+```python
+client = TarmacClient.from_env()          # $TARMAC_URL, default http://localhost:3000
+session = client.attach_from_env()        # $TARMAC_RUN_ID + $TARMAC_RUN_TOKEN
+```
+
+## Examples
+
+- [`examples/quickstart.py`](examples/quickstart.py): one careful agent, start to verdict.
+- [`examples/careful_vs_reckless.py`](examples/careful_vs_reckless.py): two agents on the same thin market. The careful one stops; the reckless one is blocked by policy.
+
 ## Tools
 
 | Method | Arguments | Returns |
