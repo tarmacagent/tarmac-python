@@ -8,6 +8,8 @@ from tarmac_agent import TarmacClient, TarmacToolError, run_agent
 RUN = "run_abcdefghijkmnpqr"
 TOKEN = "trt_secret_token_value_1234"
 SEEN = []
+# path -> how many more times to answer 503 before succeeding
+FLAKY = {}
 
 
 class FakeTarmac(BaseHTTPRequestHandler):
@@ -26,6 +28,9 @@ class FakeTarmac(BaseHTTPRequestHandler):
         length = int(self.headers.get("content-length") or 0)
         body = json.loads(self.rfile.read(length) or b"{}")
         SEEN.append((self.path, self.headers.get("authorization"), body))
+        if FLAKY.get(self.path, 0) > 0:
+            FLAKY[self.path] -= 1
+            return self._send(503, {"error": {"code": "BUSY", "message": "try again", "retryable": True}})
         if self.path == "/api/runs":
             return self._send(201, {"run": {"id": RUN, "status": "running"}, "runToken": TOKEN, "runUrl": f"/runs/{RUN}#token={TOKEN}"})
         if self.headers.get("authorization") != f"Bearer {TOKEN}":
@@ -50,7 +55,7 @@ class ClientTests(unittest.TestCase):
     def setUpClass(cls):
         cls.server = ThreadingHTTPServer(("127.0.0.1", 0), FakeTarmac)
         threading.Thread(target=cls.server.serve_forever, daemon=True).start()
-        cls.client = TarmacClient(f"http://127.0.0.1:{cls.server.server_port}/")
+        cls.client = TarmacClient(f"http://127.0.0.1:{cls.server.server_port}/", backoff=0)
 
     @classmethod
     def tearDownClass(cls):
@@ -58,6 +63,7 @@ class ClientTests(unittest.TestCase):
 
     def setUp(self):
         SEEN.clear()
+        FLAKY.clear()
 
     def test_start_run_and_credential(self):
         s = self.client.start_run(scenario="swap-thin", agent_name="unit")
@@ -99,6 +105,42 @@ class ClientTests(unittest.TestCase):
         out = run_agent(self.client, careful, scenario="swap-thin", agent_name="unit")
         self.assertEqual(out["finish"]["verdict"], "stopped")
         self.assertEqual(out["run"]["status"], "completed")
+
+    def test_retries_requests_rejected_before_work(self):
+        s = self.client.attach(RUN, TOKEN)
+        FLAKY[f"/api/runs/{RUN}/tools/request_swap"] = 2
+        out = s.tools.request_swap(quote_id="q_1", token_in="0xUSDG", token_out="0xWETH", amount_in="1")
+        self.assertEqual(out, {"ok": True})
+        self.assertEqual(len(SEEN), 3)
+
+    def test_gives_up_after_retries(self):
+        s = self.client.attach(RUN, TOKEN)
+        FLAKY[f"/api/runs/{RUN}/tools/get_balances"] = 5
+        with self.assertRaises(TarmacToolError) as cm:
+            s.tools.get_balances()
+        self.assertEqual(cm.exception.code, "BUSY")
+        self.assertEqual(len(SEEN), 3)  # first try + 2 retries
+
+    def test_does_not_retry_non_retryable_errors(self):
+        s = self.client.attach(RUN, TOKEN)
+        with self.assertRaises(TarmacToolError):
+            s.tools.get_quote(token_in="0xNOPE", token_out="0xWETH", amount_in="1")
+        self.assertEqual(len(SEEN), 1)
+
+    def test_network_errors_never_resend_a_swap(self):
+        dead = TarmacClient("http://127.0.0.1:9", retries=3, backoff=0)  # nothing listens on port 9
+        calls = []
+        real = dead._http._once
+        dead._http._once = lambda *a: (calls.append(a[1]), real(*a))[1]
+        s = dead.attach(RUN, TOKEN)
+        with self.assertRaises(TarmacToolError) as cm:
+            s.tools.request_swap(quote_id="q_1", token_in="0xUSDG", token_out="0xWETH", amount_in="1")
+        self.assertEqual(cm.exception.code, "NETWORK_ERROR")
+        self.assertEqual(len(calls), 1)
+        calls.clear()
+        with self.assertRaises(TarmacToolError):
+            s.tools.get_balances()
+        self.assertEqual(len(calls), 4)  # read-only: first try + 3 retries
 
 
 if __name__ == "__main__":

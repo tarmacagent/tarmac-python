@@ -60,6 +60,17 @@ Responses keep the API's field names (`slippageBps`, `quoteId`, …) so they mat
 
 Failures raise `TarmacToolError` with `.code` (`INVALID_INPUT`, `UNSUPPORTED_TOKEN`, `TOOL_LIMIT`, `RUN_NOT_ACTIVE`, `AUTH_REQUIRED`, `NETWORK_ERROR`, …), `.message` and `.retryable`.
 
+### Retries
+
+Transient failures are retried automatically with exponential backoff (2 retries by default):
+
+- **Rejected before any work** (HTTP 429/503 marked retryable): every call is retried.
+- **Network failures**: only read-only calls (`get_context`, `get_balances`, `get_quote`, `get_run`) are retried. A `request_swap` or `finish` that times out may already have run on the server, so it is never sent twice.
+
+```python
+client = TarmacClient("https://your-tarmac-server", retries=4, backoff=0.25)  # or retries=0 to disable
+```
+
 ## Development
 
 ```bash

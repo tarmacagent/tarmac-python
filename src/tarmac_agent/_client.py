@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -12,12 +13,37 @@ from ._types import BalancesResult, FinishResult, QuoteResult, RunContext, SwapR
 _USER_AGENT = "tarmac-agent-python/0.1.0"
 
 
+# Statuses the server uses when it rejected a request before doing any work.
+_REJECTED_BEFORE_WORK = {429, 503}
+# Tools that only read state: safe to repeat if a response was lost in transit.
+_READ_ONLY_TOOLS = {"get_context", "get_balances", "get_quote"}
+
+
 class _Http:
-    def __init__(self, base_url: str, timeout: float) -> None:
+    def __init__(self, base_url: str, timeout: float, retries: int = 2, backoff: float = 0.5) -> None:
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
+        self.retries = max(0, retries)
+        self.backoff = max(0.0, backoff)
 
-    def request(self, method: str, path: str, body: Any = None, token: Optional[str] = None) -> Any:
+    def request(self, method: str, path: str, body: Any = None, token: Optional[str] = None, *, idempotent: bool = False) -> Any:
+        """Send a request, retrying transient failures.
+
+        A request the server *rejected before doing any work* (429/503 marked retryable) is
+        always safe to retry. A network failure is retried only for ``idempotent`` requests:
+        if a swap request times out, it may already have run, so it is never sent twice.
+        """
+        attempt = 0
+        while True:
+            try:
+                return self._once(method, path, body, token)
+            except _Retryable as r:
+                if attempt >= self.retries or (r.network and not idempotent):
+                    raise r.error from None
+                time.sleep(self.backoff * (2**attempt))
+                attempt += 1
+
+    def _once(self, method: str, path: str, body: Any, token: Optional[str]) -> Any:
         data = None if body is None else json.dumps(body).encode()
         req = urllib.request.Request(self.base_url + path, data=data, method=method)
         req.add_header("accept", "application/json")
@@ -36,9 +62,20 @@ class _Http:
             except ValueError:
                 pass
             err = payload.get("error") or {}
-            raise TarmacToolError(err.get("code") or f"HTTP_{e.code}", err.get("message") or e.reason, bool(err.get("retryable"))) from None
-        except urllib.error.URLError as e:
-            raise TarmacToolError("NETWORK_ERROR", str(e.reason), True) from None
+            error = TarmacToolError(err.get("code") or f"HTTP_{e.code}", err.get("message") or e.reason, bool(err.get("retryable")))
+            if e.code in _REJECTED_BEFORE_WORK and error.retryable:
+                raise _Retryable(error, network=False) from None
+            raise error from None
+        except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
+            reason = getattr(e, "reason", e)
+            raise _Retryable(TarmacToolError("NETWORK_ERROR", str(reason), True), network=True) from None
+
+
+class _Retryable(Exception):
+    def __init__(self, error: TarmacToolError, network: bool) -> None:
+        super().__init__(str(error))
+        self.error = error
+        self.network = network
 
 
 class TarmacTools:
@@ -48,7 +85,7 @@ class TarmacTools:
         self._http, self._run_id, self._token = http, run_id, token
 
     def _call(self, tool: str, payload: Optional[Dict[str, Any]] = None) -> Any:
-        return self._http.request("POST", f"/api/runs/{self._run_id}/tools/{tool}", payload or {}, self._token)
+        return self._http.request("POST", f"/api/runs/{self._run_id}/tools/{tool}", payload or {}, self._token, idempotent=tool in _READ_ONLY_TOOLS)
 
     def get_context(self) -> RunContext:
         return self._call("get_context")
@@ -93,7 +130,7 @@ class RunSession:
 
     def get_run(self) -> Dict[str, Any]:
         """The current run record: status, verdict, trace."""
-        return self._http.request("GET", f"/api/runs/{self.run_id}", token=self.run_token)["run"]
+        return self._http.request("GET", f"/api/runs/{self.run_id}", token=self.run_token, idempotent=True)["run"]
 
 
 class TarmacClient:
@@ -101,10 +138,13 @@ class TarmacClient:
 
     >>> client = TarmacClient("http://localhost:3000")
     >>> session = client.start_run(scenario="swap-thin", agent_name="my-agent")
+
+    ``retries`` and ``backoff`` control how transient failures are retried (exponential:
+    0.5s, 1s, ...). Swap requests are never re-sent after a network failure.
     """
 
-    def __init__(self, base_url: str, timeout: float = 120.0) -> None:
-        self._http = _Http(base_url, timeout)
+    def __init__(self, base_url: str, timeout: float = 120.0, *, retries: int = 2, backoff: float = 0.5) -> None:
+        self._http = _Http(base_url, timeout, retries, backoff)
 
     def start_run(
         self,
