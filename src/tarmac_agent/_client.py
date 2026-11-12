@@ -164,6 +164,10 @@ class TarmacClient:
         )
         return RunSession(created["run"]["id"], created["runToken"], self._http.base_url + created["runUrl"], TarmacTools(self._http, created["run"]["id"], created["runToken"]), self._http)
 
+    def health(self) -> Dict[str, Any]:
+        """Server status from ``GET /api/health``: which run modes are available and whether runs persist."""
+        return self._http.request("GET", "/api/health", idempotent=True)
+
     @classmethod
     def from_env(cls, **options: Any) -> "TarmacClient":
         """Client for ``$TARMAC_URL`` (default ``http://localhost:3000``). Extra options go to ``__init__``."""

@@ -51,6 +51,8 @@ class FakeTarmac(BaseHTTPRequestHandler):
         return self._send(200, {"ok": True})
 
     def do_GET(self):
+        if self.path == "/api/health":
+            return self._send(200, {"ok": True, "persistent": True, "modes": {"fixture": {"available": True}, "fork": {"available": False}}})
         return self._send(200, {"run": {"id": RUN, "status": "completed", "result": {"verdict": "stopped"}}})
 
 
@@ -68,6 +70,30 @@ class ClientTests(unittest.TestCase):
     def setUp(self):
         SEEN.clear()
         FLAKY.clear()
+
+    def test_health(self):
+        h = self.client.health()
+        self.assertTrue(h["ok"])
+        self.assertEqual(h["modes"]["fixture"], {"available": True})
+
+    def test_cli_check(self):
+        import contextlib, io
+        from tarmac_agent.__main__ import main
+
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = main(["check", "--url", self.client._http.base_url])
+        self.assertEqual(code, 0)
+        self.assertIn("modes       fixture", out.getvalue())
+
+    def test_cli_check_unreachable(self):
+        import contextlib, io
+        from tarmac_agent.__main__ import main
+
+        with contextlib.redirect_stderr(io.StringIO()) as err:
+            code = main(["check", "--url", "http://127.0.0.1:9"])
+        self.assertEqual(code, 1)
+        self.assertIn("NETWORK_ERROR", err.getvalue())
 
     def test_start_run_and_credential(self):
         s = self.client.start_run(scenario="swap-thin", agent_name="unit")

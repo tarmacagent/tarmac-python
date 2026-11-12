@@ -51,6 +51,17 @@ client = TarmacClient.from_env()          # $TARMAC_URL, default http://localhos
 session = client.attach_from_env()        # $TARMAC_RUN_ID + $TARMAC_RUN_TOKEN
 ```
 
+### Check your setup
+
+```bash
+python -m tarmac_agent check --url https://your-tarmac-server   # or set $TARMAC_URL
+# ✓ https://your-tarmac-server is up
+#   modes       fixture, fork
+#   persistent  yes
+```
+
+`TarmacClient.health()` returns the same status from code.
+
 ## Examples
 
 - [`examples/quickstart.py`](examples/quickstart.py): one careful agent, start to verdict.
