@@ -10,6 +10,12 @@ Tarmac runs your agent against a live fork of Robinhood Chain with an isolated s
 pip install tarmac-agent
 ```
 
+> **Coming to PyPI soon.** Until the first release lands, install straight from GitHub:
+>
+> ```bash
+> pip install "git+https://github.com/tarmacagent/tarmac-python"
+> ```
+
 Standard library only: no dependencies.
 
 ## Quickstart
@@ -88,6 +94,15 @@ client = TarmacClient("https://your-tarmac-server", retries=4, backoff=0.25)  # 
 ```bash
 python -m unittest discover -s tests -v
 ```
+
+### Releasing
+
+Releases publish to PyPI from GitHub Actions with [Trusted Publishing](https://docs.pypi.org/trusted-publishers/): no API token is stored anywhere.
+
+1. Bump `__version__` in `src/tarmac_agent/_version.py` and move the changelog's *Unreleased* notes under that version.
+2. Tag and push: `git tag v0.1.0 && git push origin v0.1.0`.
+
+The workflow refuses to publish if the tag and the package version disagree.
 
 ## Related
 

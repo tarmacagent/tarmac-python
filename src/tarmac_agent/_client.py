@@ -10,8 +10,9 @@ from typing import Any, Callable, Dict, Optional
 
 from ._errors import TarmacToolError
 from ._types import BalancesResult, FinishResult, QuoteResult, RunContext, SwapResult
+from ._version import __version__
 
-_USER_AGENT = "tarmac-agent-python/0.1.0"
+_USER_AGENT = f"tarmac-agent-python/{__version__}"
 
 
 # Statuses the server uses when it rejected a request before doing any work.

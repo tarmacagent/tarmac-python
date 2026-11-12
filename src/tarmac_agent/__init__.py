@@ -18,6 +18,7 @@ from ._types import (
 )
 
 __all__ = [
+    "__version__",
     "TarmacClient",
     "TarmacTools",
     "RunSession",
@@ -33,4 +34,4 @@ __all__ = [
     "SwapResult",
     "FinishResult",
 ]
-__version__ = "0.1.0"
+from ._version import __version__

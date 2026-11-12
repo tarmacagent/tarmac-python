@@ -5,7 +5,9 @@ from unittest import mock
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+import tarmac_agent
 from tarmac_agent import TarmacClient, TarmacToolError, run_agent
+from tarmac_agent._client import _USER_AGENT
 
 RUN = "run_abcdefghijkmnpqr"
 TOKEN = "trt_secret_token_value_1234"
@@ -159,6 +161,9 @@ class ClientTests(unittest.TestCase):
             with self.assertRaises(TarmacToolError) as cm:
                 self.client.attach_from_env()
             self.assertEqual(cm.exception.code, "AUTH_REQUIRED")
+
+    def test_user_agent_carries_the_package_version(self):
+        self.assertEqual(_USER_AGENT, f"tarmac-agent-python/{tarmac_agent.__version__}")
 
 
 if __name__ == "__main__":
