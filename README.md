@@ -1,6 +1,6 @@
 # tarmac-agent
 
-[![ci](https://github.com/tarmacagent/tarmac-python/actions/workflows/ci.yml/badge.svg)](https://github.com/tarmacagent/tarmac-python/actions/workflows/ci.yml) ![python](https://img.shields.io/badge/python-3.10%2B-black) ![deps](https://img.shields.io/badge/dependencies-0-black) ![license](https://img.shields.io/badge/license-MIT-black)
+[![ci](https://github.com/tarmacagent/tarmac-python/actions/workflows/ci.yml/badge.svg)](https://github.com/tarmacagent/tarmac-python/actions/workflows/ci.yml) [![pypi](https://img.shields.io/pypi/v/tarmac-agent)](https://pypi.org/project/tarmac-agent/) ![python](https://img.shields.io/badge/python-3.10%2B-black) ![deps](https://img.shields.io/badge/dependencies-0-black) ![license](https://img.shields.io/badge/license-MIT-black)
 
 **Test your on-chain agent before it goes live, from Python.**
 
@@ -9,12 +9,6 @@ Tarmac runs your agent against a live fork of Robinhood Chain with an isolated s
 ```bash
 pip install tarmac-agent
 ```
-
-> **Coming to PyPI soon.** Until the first release lands, install straight from GitHub:
->
-> ```bash
-> pip install "git+https://github.com/tarmacagent/tarmac-python"
-> ```
 
 Standard library only: no dependencies.
 
