@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.1
 
 - `python -m tarmac_agent check` tells you whether a server is reachable and which run modes it serves. Reads `$TARMAC_URL` or `--url`.
 - `TarmacClient.health()` returns the same status from code.
